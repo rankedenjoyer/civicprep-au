@@ -1,7 +1,7 @@
 {
   "expo": {
-    "name": "AUS-citizen-test-prep",
-    "slug": "AUS-citizen-test-prep",
+    "name": "CivicPrep AU",
+    "slug": "civicprep-au",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
@@ -9,7 +9,7 @@
     "splash": {
       "image": "./assets/splash-icon.png",
       "resizeMode": "contain",
-      "backgroundColor": "#ffffff"
+      "backgroundColor": "#1B4F72"
     },
     "ios": {
       "supportsTablet": true
