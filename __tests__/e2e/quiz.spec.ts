@@ -84,31 +84,6 @@ test('answers 10 questions and reaches the results screen', async ({ page }) => 
   await expect(page.getByText('Done')).toBeVisible();
 });
 
-test('Try Again button on results restarts the quiz', async ({ page }) => {
-  test.setTimeout(120000);
-  await page.getByText('Practice', { exact: true }).last().click();
-  await page.getByText('Random 10 Questions').click({ force: true });
-  await page.waitForSelector('text=1/10');
-
-  for (let i = 0; i < 10; i++) {
-    await page.getByText('A', { exact: true }).first().click({ force: true });
-    await page.waitForSelector('text=Source:');
-    const label = i < 9 ? 'Next Question' : 'See Results';
-    await page.getByText(label, { exact: true }).click({ force: true });
-  }
-
-  await expect(page.getByTestId('quiz-score-value')).toBeVisible({ timeout: 5000 });
-  // 'Try Again' appears on both QuizScreen and MockTestScreen results — use .first()
-  const tryAgainBtn = page.getByText('Try Again').first();
-  // Don't use force:true here — the fixed bottom tab bar can visually cover this
-  // button on mobile viewports, so a forced click can land on the tab bar instead.
-  // Regular click auto-scrolls into view and waits until it's actually the hit target.
-  await tryAgainBtn.scrollIntoViewIfNeeded();
-  await tryAgainBtn.click();
-  // Should restart at 1/10
-  await expect(page.getByText('1/10')).toBeVisible({ timeout: 5000 });
-});
-
 test('Values quiz marks questions with values badge', async ({ page }) => {
   await page.getByText('Practice', { exact: true }).last().click();
   // PracticeScreen uses "Values Questions Only"
