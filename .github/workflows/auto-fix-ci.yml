@@ -70,6 +70,7 @@ jobs:
         with:
           anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
           claude_args: "--allowedTools 'Edit,MultiEdit,Write,Read,Glob,Grep,Bash(git:*),Bash(npm:*),Bash(npx:*)'"
+          show_full_output: true
           prompt: |
             The "Tests" GitHub Actions workflow just failed on a direct push to main
             in this repo (a React Native/Expo app tested with Jest + Playwright).
