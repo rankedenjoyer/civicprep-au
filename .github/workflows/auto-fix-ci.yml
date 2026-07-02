@@ -1,0 +1,101 @@
+name: Auto Fix CI Failures
+
+# Fires the instant the "Tests" workflow completes on main (GitHub's own event
+# bus — no polling). If it failed, this job asks Claude Code to reproduce,
+# diagnose, and fix it inside the runner, then push straight to main if (and
+# only if) the full suite is green afterward.
+
+on:
+  workflow_run:
+    workflows: ["Tests"]
+    types:
+      - completed
+
+permissions:
+  contents: write
+  actions: read
+
+jobs:
+  auto-fix:
+    if: |
+      github.event.workflow_run.conclusion == 'failure' &&
+      github.event.workflow_run.head_branch == 'main' &&
+      github.event.workflow_run.head_commit.author.name != 'claude-autofix-bot'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout main
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - name: Setup git identity
+        run: |
+          git config --global user.email "claude-autofix-bot@users.noreply.github.com"
+          git config --global user.name "claude-autofix-bot"
+
+      - name: Get CI failure details
+        id: failure_details
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const jobs = await github.rest.actions.listJobsForWorkflowRun({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              run_id: ${{ github.event.workflow_run.id }}
+            });
+
+            const failedJobs = jobs.data.jobs.filter(job => job.conclusion === 'failure');
+
+            let errorLogs = [];
+            for (const job of failedJobs) {
+              const logs = await github.rest.actions.downloadJobLogsForWorkflowRun({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                job_id: job.id
+              });
+              errorLogs.push({ jobName: job.name, logs: logs.data });
+            }
+
+            return {
+              runUrl: `https://github.com/${context.repo.owner}/${context.repo.repo}/actions/runs/${{ github.event.workflow_run.id }}`,
+              failedJobs: failedJobs.map(j => j.name),
+              errorLogs,
+            };
+
+      - name: Fix CI failures with Claude
+        id: claude
+        uses: anthropics/claude-code-action@v1
+        with:
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          claude_args: "--allowedTools 'Edit,MultiEdit,Write,Read,Glob,Grep,Bash(git:*),Bash(npm:*),Bash(npx:*)'"
+          prompt: |
+            The "Tests" GitHub Actions workflow just failed on a direct push to main
+            in this repo (a React Native/Expo app tested with Jest + Playwright).
+
+            Failed CI run: ${{ fromJSON(steps.failure_details.outputs.result).runUrl }}
+            Failed jobs: ${{ join(fromJSON(steps.failure_details.outputs.result).failedJobs, ', ') }}
+
+            Error logs from the failed jobs:
+            ${{ toJSON(fromJSON(steps.failure_details.outputs.result).errorLogs) }}
+
+            Do the following, in order:
+            1. Reproduce locally: `npm ci`, `npx playwright install --with-deps chromium`,
+               then `npm test` (Jest, in __tests__/unit/) and `npx playwright test`
+               (Playwright, in __tests__/e2e/, config in playwright.config.ts — it
+               auto-boots `expo start --web` on port 8081).
+            2. Diagnose the actual root cause from the error logs above and the local
+               repro. Prefer fixing app code in src/ if the app is genuinely broken;
+               only edit a spec under __tests__/e2e/ if the test itself is wrong
+               (stale selector, flaky assertion, timing) rather than the app.
+            3. Apply the minimal fix. Do not refactor unrelated code.
+            4. Re-run the FULL suite (`npm test` AND `npx playwright test`, not just
+               the previously-failing spec) until everything passes. A fix that
+               passes one test while breaking another does not count as done.
+            5. Only if the full suite is fully green: `git add`, commit with a
+               message describing the actual root cause and fix (not "auto-fix"),
+               then `git push origin main`.
+            6. If you cannot reach a fully green suite after a reasonable number of
+               attempts, do NOT commit or push anything — leave the working tree
+               clean and end. A human will look at the run linked above. Do not
+               push a partial or speculative fix.

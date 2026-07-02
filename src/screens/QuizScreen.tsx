@@ -78,7 +78,7 @@ export default function QuizScreen({ navigation, route }: Props) {
             <Text style={[styles.scoreCircleText, { color: percent >= 75 ? COLORS.success : COLORS.error }]}>
               {percent}%
             </Text>
-            <Text style={styles.scoreCircleSub}>{score}/{total}</Text>
+            <Text style={styles.scoreCircleSub} testID="quiz-score-value">{score}/{total}</Text>
           </View>
           <Text style={styles.resultTitle}>
             {percent >= 75 ? 'Well done!' : 'Keep practising!'}

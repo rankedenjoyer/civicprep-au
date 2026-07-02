@@ -78,8 +78,9 @@ test('answers 10 questions and reaches the results screen', async ({ page }) => 
     await page.getByText(label, { exact: true }).click({ force: true });
   }
 
-  // Results screen shows score out of 10
-  await expect(page.getByText(/\/10/)).toBeVisible({ timeout: 5000 });
+  // Results screen shows score out of 10 — use testID, not a /\/10/ regex,
+  // since that regex can accidentally match a "/10"-day-of-month date elsewhere in the DOM.
+  await expect(page.getByTestId('quiz-score-value')).toBeVisible({ timeout: 5000 });
   await expect(page.getByText('Done')).toBeVisible();
 });
 
@@ -96,9 +97,14 @@ test('Try Again button on results restarts the quiz', async ({ page }) => {
     await page.getByText(label, { exact: true }).click({ force: true });
   }
 
-  await expect(page.getByText(/\/10/)).toBeVisible({ timeout: 5000 });
+  await expect(page.getByTestId('quiz-score-value')).toBeVisible({ timeout: 5000 });
   // 'Try Again' appears on both QuizScreen and MockTestScreen results — use .first()
-  await page.getByText('Try Again').first().click({ force: true });
+  const tryAgainBtn = page.getByText('Try Again').first();
+  // Don't use force:true here — the fixed bottom tab bar can visually cover this
+  // button on mobile viewports, so a forced click can land on the tab bar instead.
+  // Regular click auto-scrolls into view and waits until it's actually the hit target.
+  await tryAgainBtn.scrollIntoViewIfNeeded();
+  await tryAgainBtn.click();
   // Should restart at 1/10
   await expect(page.getByText('1/10')).toBeVisible({ timeout: 5000 });
 });

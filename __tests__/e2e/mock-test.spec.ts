@@ -112,8 +112,9 @@ test('completes 20 questions and shows pass/fail results screen', async ({ page 
 
   // Results screen
   await expect(page.getByText(/Test Passed|Test Not Passed/)).toBeVisible({ timeout: 10000 });
-  // Multiple \d+/20 patterns exist in DOM — use .first()
-  await expect(page.getByText(/\d+\/20/).first()).toBeVisible();
+  // Use testID, not a /\d+\/20/ regex — that regex can accidentally match
+  // today's date string (e.g. "7/2/2026" contains "2/20") elsewhere in the DOM.
+  await expect(page.getByTestId('overall-score-value')).toBeVisible();
   await expect(page.getByText('Values Score', { exact: true })).toBeVisible();
   await expect(page.getByText('Try Again').first()).toBeVisible();
 });

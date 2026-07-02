@@ -370,7 +370,7 @@ export default function MockTestScreen({ navigation, route }: Props) {
         {/* Score breakdown */}
         <View style={styles.scoreBreakdown}>
           <View style={styles.scoreItem}>
-            <Text style={styles.scoreItemValue}>{result.score}/{result.total}</Text>
+            <Text style={styles.scoreItemValue} testID="overall-score-value">{result.score}/{result.total}</Text>
             <Text style={styles.scoreItemLabel}>Overall Score</Text>
             <Text style={[styles.scoreItemStatus, { color: result.score >= PASS_SCORE ? COLORS.success : COLORS.error }]}>
               {result.score >= PASS_SCORE ? '✓ Passed' : `✗ Need ${PASS_SCORE}`}
